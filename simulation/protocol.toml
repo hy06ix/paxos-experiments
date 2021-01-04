@@ -1,0 +1,9 @@
+Simulation = "TemplateProtocol"
+Servers = 1
+Bf = 9
+Rounds = 5
+CloseWait = 6000
+Suite = "Ed25519"
+
+Depth, Hosts
+1, 10
