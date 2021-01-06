@@ -20,12 +20,14 @@ In the Node-method you can read the files that have been created by the
 */
 
 import (
+	"time"
+
 	"github.com/BurntSushi/toml"
 	"go.dedis.ch/onet/v3"
 	"go.dedis.ch/onet/v3/log"
 	"go.dedis.ch/onet/v3/simul/monitor"
 
-	"hy06ix/protocol"
+	"github.com/hy06ix/paxos-experiments/protocol"
 )
 
 func init() {
@@ -86,14 +88,21 @@ func (s *SimulationPaxosProtocol) Run(config *onet.SimulationConfig) error {
 			return err
 		}
 
-		protocol := p.(*protocol.PaxosProtocol)
-		go protocol.Start()
+		paxosProtocol := p.(*protocol.PaxosProtocol)
+		go p.Start()
 		// children := <-p.(*protocol.PaxosProtocol).ChildCount
 		round.Record()
 		// if children != size {
 		// 	return errors.New("Didn't get " + strconv.Itoa(size) +
 		// 		" children")
 		// }
+
+		select {
+		case <-paxosProtocol.ChannelFinish:
+			log.Lvl1("End of Round")
+		case <-time.After(time.Second * time.Duration(10)):
+			log.Lvl1("Didn't finish in time")
+		}
 	}
 	return nil
 }
