@@ -1,4 +1,4 @@
-package main
+package simulation
 
 /*
 The simulation-file can be used with the `cothority/simul` and be run either
@@ -20,29 +20,27 @@ In the Node-method you can read the files that have been created by the
 */
 
 import (
-	"errors"
-	"strconv"
-
 	"github.com/BurntSushi/toml"
-	"github.com/dedis/cothority_template/protocol"
 	"go.dedis.ch/onet/v3"
 	"go.dedis.ch/onet/v3/log"
 	"go.dedis.ch/onet/v3/simul/monitor"
+
+	"hy06ix/protocol"
 )
 
 func init() {
-	onet.SimulationRegister("TemplateProtocol", NewSimulationProtocol)
+	onet.SimulationRegister("Paxos", NewSimulationPaxosProtocol)
 }
 
 // SimulationProtocol implements onet.Simulation.
-type SimulationProtocol struct {
+type SimulationPaxosProtocol struct {
 	onet.SimulationBFTree
 }
 
 // NewSimulationProtocol is used internally to register the simulation (see the init()
 // function above).
-func NewSimulationProtocol(config string) (onet.Simulation, error) {
-	es := &SimulationProtocol{}
+func NewSimulationPaxosProtocol(config string) (onet.Simulation, error) {
+	es := &SimulationPaxosProtocol{}
 	_, err := toml.Decode(config, es)
 	if err != nil {
 		return nil, err
@@ -51,7 +49,7 @@ func NewSimulationProtocol(config string) (onet.Simulation, error) {
 }
 
 // Setup implements onet.Simulation.
-func (s *SimulationProtocol) Setup(dir string, hosts []string) (
+func (s *SimulationPaxosProtocol) Setup(dir string, hosts []string) (
 	*onet.SimulationConfig, error) {
 	sc := &onet.SimulationConfig{}
 	s.CreateRoster(sc, hosts, 2000)
@@ -66,7 +64,7 @@ func (s *SimulationProtocol) Setup(dir string, hosts []string) (
 // by the server. Here we call the 'Node'-method of the
 // SimulationBFTree structure which will load the roster- and the
 // tree-structure to speed up the first round.
-func (s *SimulationProtocol) Node(config *onet.SimulationConfig) error {
+func (s *SimulationPaxosProtocol) Node(config *onet.SimulationConfig) error {
 	index, _ := config.Roster.Search(config.Server.ServerIdentity.ID)
 	if index < 0 {
 		log.Fatal("Didn't find this node in roster")
@@ -76,24 +74,26 @@ func (s *SimulationProtocol) Node(config *onet.SimulationConfig) error {
 }
 
 // Run implements onet.Simulation.
-func (s *SimulationProtocol) Run(config *onet.SimulationConfig) error {
+func (s *SimulationPaxosProtocol) Run(config *onet.SimulationConfig) error {
 	size := config.Tree.Size()
 	log.Lvl2("Size is:", size, "rounds:", s.Rounds)
 	for round := 0; round < s.Rounds; round++ {
 		log.Lvl1("Starting round", round)
 		round := monitor.NewTimeMeasure("round")
-		p, err := config.Overlay.CreateProtocol("Template", config.Tree,
+		p, err := config.Overlay.CreateProtocol("Paxos", config.Tree,
 			onet.NilServiceID)
 		if err != nil {
 			return err
 		}
-		go p.Start()
-		children := <-p.(*protocol.TemplateProtocol).ChildCount
+
+		protocol := p.(*protocol.PaxosProtocol)
+		go protocol.Start()
+		// children := <-p.(*protocol.PaxosProtocol).ChildCount
 		round.Record()
-		if children != size {
-			return errors.New("Didn't get " + strconv.Itoa(size) +
-				" children")
-		}
+		// if children != size {
+		// 	return errors.New("Didn't get " + strconv.Itoa(size) +
+		// 		" children")
+		// }
 	}
 	return nil
 }
